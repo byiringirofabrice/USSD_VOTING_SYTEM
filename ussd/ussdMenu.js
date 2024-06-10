@@ -3,12 +3,8 @@ const User = require('../models/User');
 const Vote = require('../models/Vote');
 const Candidate = require('../models/Candidate');
 
-// Create a new UssdMenu instance with session configuration
-let menu = new UssdMenu({
-    sessionConfig: { timeout: 300000 } // 5 minutes session timeout
-});
+let menu = new UssdMenu();
 
-// Define USSD menu states and transitions
 menu.startState({
     run: () => {
         menu.con('Welcome to the Voting System' +
@@ -23,7 +19,6 @@ menu.startState({
     }
 });
 
-// Handle user registration
 menu.state('register', {
     run: () => {
         menu.con('Enter your Name:');
@@ -33,7 +28,6 @@ menu.state('register', {
     }
 });
 
-// Handle user ID entry
 menu.state('register.idNumber', {
     run: () => {
         let name = menu.val;
@@ -45,7 +39,6 @@ menu.state('register.idNumber', {
     }
 });
 
-// Handle user phone number entry
 menu.state('register.phoneNumber', {
     run: () => {
         let idNumber = menu.val;
@@ -57,14 +50,12 @@ menu.state('register.phoneNumber', {
     }
 });
 
-// Handle saving user registration data
 menu.state('register.save', {
     run: () => {
         let phoneNumber = menu.val;
         let name = menu.session.get('name');
         let idNumber = menu.session.get('idNumber');
 
-        // Call User.register method to save user data
         User.register(name, idNumber, phoneNumber, (err, result) => {
             if (err) {
                 menu.end('Registration failed');
@@ -75,7 +66,6 @@ menu.state('register.save', {
     }
 });
 
-// Handle voting
 menu.state('vote', {
     run: () => {
         menu.con('Select position to vote for:' +
@@ -88,13 +78,11 @@ menu.state('vote', {
     }
 });
 
-// Handle selecting candidates for voting
 menu.state('vote.candidates', {
     run: () => {
         let position = menu.val;
         menu.session.set('position', position);
 
-        // Fetch candidates for the selected position
         Candidate.getAll((err, candidates) => {
             if (err) {
                 menu.end('Error fetching candidates');
@@ -112,21 +100,18 @@ menu.state('vote.candidates', {
     }
 });
 
-// Handle saving the vote
 menu.state('vote.save', {
     run: () => {
         let candidateIndex = menu.val - 1;
         let position = menu.session.get('position');
         let phoneNumber = menu.args.phoneNumber;
 
-        // Fetch candidates again to validate the selected candidate
         Candidate.getAll((err, candidates) => {
             if (err || !candidates[candidateIndex]) {
                 menu.end('Invalid candidate selection');
             } else {
                 let candidateId = candidates[candidateIndex].id;
 
-                // Check if the user has already voted for the position
                 User.findByPhoneNumber(phoneNumber, (err, userResult) => {
                     if (err || userResult.length === 0) {
                         menu.end('User not found');
@@ -139,7 +124,6 @@ menu.state('vote.save', {
                             } else if (voteResult.length > 0) {
                                 menu.end('You have already voted for this position');
                             } else {
-                                // Cast the vote
                                 Vote.castVote(userId, position, candidateId, (err, result) => {
                                     if (err) {
                                         menu.end('Error casting vote');
@@ -156,38 +140,35 @@ menu.state('vote.save', {
     }
 });
 
-// Handle viewing votes
 menu.state('viewVotes', {
     run: () => {
         // Logic to view votes
-        // Fetch candidates and votes for each position
         Candidate.getAll((err, candidates) => {
             if (err) {
                 menu.end('Error fetching candidates');
             } else {
                 const positions = ['Gluide President', 'Social Affairs', 'Minister of Security'];
+                let votes = [];
                 let response = '';
 
-                positions.forEach(position => {
+                positions.forEach((position, index) => {
                     response += `\n${position}`;
-                    candidates.forEach(candidate => {
+                    candidates.forEach((candidate, index) => {
                         Vote.countVotes(position, candidate.id, (err, result) => {
                             if (err) {
                                 menu.end('Error counting votes');
                             } else {
                                 response += `\n${candidate.name}: ${result[0].votes} votes`;
+                                if (index === candidates.length - 1) {
+                                    menu.end(response);
+                                }
                             }
                         });
                     });
                 });
-
-                menu.end(response);
             }
         });
     }
 });
-
-// Set the default state to startState
-menu.on('*', 'startState');
 
 module.exports = menu;
