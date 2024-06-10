@@ -1,10 +1,10 @@
 const mysql = require('mysql');
 
 const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'ussd_voting'
+    host: 'bj1fyu0rl879l8hglbrg-mysql.services.clever-cloud.com',
+    user: 'uc37ywczgykftdmc',
+    password: 'FjZbcHxJWqrvxT1UhoaW',
+    database: 'bj1fyu0rl879l8hglbrg'
 });
 
 db.connect((err) => {
